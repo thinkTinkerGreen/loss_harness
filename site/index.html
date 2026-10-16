@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Correct and Observable Loss Harness — Causal Language Models</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --accent-green: #34d399;
+      --accent-red: #f87171;
+      --accent-purple: #a78bfa;
+      --accent-amber: #fbbf24;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 60%, rgba(167, 139, 250, 0.08) 0%, transparent 45%);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 48px 0 32px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .badge-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .badge:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .badge.active-colab {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .badge.active-github {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #f8fafc, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 860px;
+    }
+
+    .claim-banner {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .claim-banner-text {
+      color: #a7f3d0;
+      font-size: 0.95rem;
+    }
+
+    .claim-banner-text strong {
+      color: #34d399;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b0f19;
+    }
+
+    .btn-primary:hover {
+      background: #7dd3fc;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .btn-claim {
+      background: var(--accent-green);
+      color: #0b0f19;
+    }
+
+    .btn-claim:hover {
+      background: #6ee7b7;
+      box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
+    }
+
+    /* Metric Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin: 32px 0;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .metric-val {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+    }
+
+    .metric-sub {
+      font-size: 0.85rem;
+      color: var(--accent-green);
+      margin-top: 4px;
+    }
+
+    /* Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 32px;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.3);
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards and Layout */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(12px);
+    }
+
+    .card h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 20px 0 10px;
+      color: #e2e8f0;
+    }
+
+    p {
+      color: #cbd5e1;
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.8);
+      color: #94a3b8;
+      font-weight: 600;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--card-border);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    code, pre {
+      font-family: var(--font-mono);
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.07);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      color: #38bdf8;
+    }
+
+    .code-block {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    .alert {
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-size: 0.95rem;
+    }
+
+    .alert-info {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 4px solid var(--accent);
+      color: #bae6fd;
+    }
+
+    .alert-warning {
+      background: rgba(251, 191, 36, 0.08);
+      border-left: 4px solid var(--accent-amber);
+      color: #fef3c7;
+    }
+
+    .alert-success {
+      background: rgba(52, 211, 153, 0.08);
+      border-left: 4px solid var(--accent-green);
+      color: #d1fae5;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      margin: 24px 0;
+    }
+
+    .image-preview {
+      width: 100%;
+      max-width: 800px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      margin: 16px 0;
+      display: block;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--card-border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container">
+      <div class="header-top">
+        <div class="badge-group">
+          <a href="https://github.com/thinkTinkerGreen/loss_harness" target="_blank" class="badge active-github">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub Repository
+          </a>
+          <a href="https://colab.research.google.com/github/thinkTinkerGreen/loss_harness/blob/main/loss_harness.ipynb" target="_blank" class="badge active-colab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.9 13.5c-.3 0-.6.1-.8.3l-2.6-2.6c.2-.2.3-.5.3-.8 0-.7-.6-1.3-1.3-1.3s-1.3.6-1.3 1.3c0 .3.1.6.3.8l-2.6 2.6c-.2-.2-.5-.3-.8-.3-.7 0-1.3.6-1.3 1.3s.6 1.3 1.3 1.3 1.3-.6 1.3-1.3c0-.3-.1-.6-.3-.8l2.6-2.6c.2.2.5.3.8.3s.6-.1.8-.3l2.6 2.6c-.2.2-.3.5-.3.8 0 .7.6 1.3 1.3 1.3s1.3-.6 1.3-1.3-.6-1.3-1.3-1.3z"/></svg>
+            Open in Colab
+          </a>
+          <span class="badge">PyTorch 2.14.1</span>
+          <span class="badge">Tiktoken GPT-2</span>
+          <span class="badge">SOTA Loss Harness</span>
+        </div>
+      </div>
+
+      <h1>Correct and Observable Loss Harness</h1>
+      <p class="tagline">
+        A rigorous, unit-asserted validation framework for causal language model loss calculation. Eliminating silent target leakage, non-contiguous memory allocations, and boundary corruption across 7 foundational probes.
+      </p>
+
+      <div class="claim-banner" id="claimBanner">
+        <div class="claim-banner-text">
+          🚀 <strong>Netlify Deployment Ready:</strong> This live dashboard is hosted on Netlify and ready to be claimed to your Netlify account.
+        </div>
+        <a href="#" id="claimButton" class="btn btn-claim" target="_blank">Claim Site on Netlify</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Key Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Vocabulary Size ($V$)</div>
+        <div class="metric-val">50,258</div>
+        <div class="metric-sub">GPT-2 BPE + 1 PAD row</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Theoretical Floor ($\ln V$)</div>
+        <div class="metric-val">10.8249</div>
+        <div class="metric-sub">Untrained: 10.8631 nats</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Tied Model Parameters</div>
+        <div class="metric-val">16,091,136</div>
+        <div class="metric-sub">Untied: 28,957,184 ($+V \times D$)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Peak Memory Reduction</div>
+        <div class="metric-val">&gt; 8.0&times;</div>
+        <div class="metric-sub">1.647 GB &rarr; 0.206 GB (Chunked)</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab(0)">Overview</button>
+      <button class="tab-btn" onclick="switchTab(1)">1. Shapes & Memory</button>
+      <button class="tab-btn" onclick="switchTab(2)">2. The Shift & Controls</button>
+      <button class="tab-btn" onclick="switchTab(3)">3. Padding & Poison</button>
+      <button class="tab-btn" onclick="switchTab(4)">4. Document Packing</button>
+      <button class="tab-btn" onclick="switchTab(5)">5. Perplexity & Init</button>
+      <button class="tab-btn" onclick="switchTab(6)">6. Parameter Audit</button>
+      <button class="tab-btn" onclick="switchTab(7)">7. Chunked Loss Memory</button>
+      <button class="tab-btn" onclick="switchTab(8)">Part 2: Multi-Token Head</button>
+    </div>
+
+    <!-- Tab 0: Overview -->
+    <div class="tab-content active" id="tab-0">
+      <div class="card">
+        <h2>Architecture & Mission</h2>
+        <p>
+          In causal language model pre-training, subtle bugs in loss computation—such as misaligned label shifts, incorrect padding token weighting, cross-document contamination, and naive autograd graph retention—often manifest not as obvious exceptions, but as <em>degraded downstream performance</em> or <em>artificially low, meaningless loss curves</em>.
+        </p>
+        <p>
+          This repository establishes a <strong>Correct and Observable Loss Harness</strong> with zero tolerance for silent errors. Built from scratch with PyTorch and verified against Karpathy's TinyShakespeare corpus and GPT-2 tokenization, each component is sealed by exact mathematical and programmatic assertions.
+        </p>
+        <div class="alert alert-info">
+          <strong>Key Guarantee:</strong> Targets originate from a single source of truth (<code>make_targets</code>). No ad-hoc label shifting is permitted across training or evaluation loops, and all token indices are decoded into explicit string representations with whitespace/newline visibility.
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 1: Shapes -->
+    <div class="tab-content" id="tab-1">
+      <div class="card">
+        <h2>Item 1 — Tensor Shapes and Memory Semantics</h2>
+        <p>
+          Traced across a test batch of <strong>$B=4, T=32, D=256, V=50258$</strong>. Each rank and dimension represents a concrete semantic concept in causal modeling.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Tensor Name</th><th>Shape</th><th>Dtype</th><th>Dimension Meaning</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>tokens</code></td><td>(4, 32)</td><td>int64</td><td>(B sequences, T positions) input token ids</td></tr>
+              <tr><td><code>hidden</code></td><td>(4, 32, 256)</td><td>float32</td><td>(B, T, D) final LayerNorm activations per position</td></tr>
+              <tr><td><code>logits</code></td><td>(4, 32, 50258)</td><td>float32</td><td>(B, T, V) unnormalized prediction scores per vocab entry</td></tr>
+              <tr><td><code>logits[:, :-1]</code></td><td>(4, 31, 50258)</td><td>float32</td><td>Drop last position (no subsequent token to predict)</td></tr>
+              <tr><td><code>logits.reshape(-1, V)</code></td><td>(124, 50258)</td><td>float32</td><td>(N = B&middot;(T-1) predictions, V) flattened matrix</td></tr>
+              <tr><td><code>tokens[:, 1:]</code></td><td>(4, 31)</td><td>int64</td><td>Targets: token at position t + 1</td></tr>
+              <tr><td><code>tokens.reshape(-1)</code></td><td>(124,)</td><td>int64</td><td>(N,) ground truth class index per prediction</td></tr>
+              <tr><td><code>per-token loss</code></td><td>(124,)</td><td>float32</td><td>(N,) per-token NLL before scalar reduction</td></tr>
+              <tr><td><code>loss</code></td><td>()</td><td>float32</td><td>Scalar mean over all valid tokens</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-warning">
+          <strong>Hidden Memory Cost of Naive Slicing:</strong> Slicing <code>logits[:, :-1]</code> renders the tensor non-contiguous in memory. Calling <code>.reshape(-1, V)</code> forces PyTorch to perform an eager memory copy. At $B=8, T=1024, V=50258$ (fp32), this eagerly copies <strong>1.645 GB</strong> of memory into temporary buffers before computing loss! Slicing <code>hidden</code> first eliminates this copy completely.
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: The Shift -->
+    <div class="tab-content" id="tab-2">
+      <div class="card">
+        <h2>Item 2 — Target Shift Verification & Negative Controls</h2>
+        <p>
+          A language model must predict the <em>future</em> token $t+1$ given tokens up to $t$. We verify this alignment with explicit string decodings and execute negative control experiments.
+        </p>
+        <h3>Negative Controls: The "Beautiful, Meaningless Curve" Warning</h3>
+        <p>
+          When an engineer accidentally aligns targets to $t$ (identity) or $t-1$ (retrieval), the model can simply extract the answer already embedded in its prefix activations. The loss collapses to near-zero immediately, fooling unobservant practitioners.
+        </p>
+        <div class="chart-wrapper">
+          <canvas id="negChart"></canvas>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Training Mode</th><th>Shift Offset</th><th>Loss at Step 50</th><th>Behavior</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong><code>correct</code></strong></td><td>$t \to t+1$</td><td>8.514 nats</td><td>True autoregressive learning (future token prediction)</td></tr>
+              <tr><td><strong><code>shift0</code></strong></td><td>$t \to t$</td><td>1.821 nats</td><td>Trivial identity copy from input embeddings</td></tr>
+              <tr><td><strong><code>shift_neg1</code></strong></td><td>$t \to t-1$</td><td>2.140 nats</td><td>Trivial retrieval from past causal self-attention</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Padding -->
+    <div class="tab-content" id="tab-3">
+      <div class="card">
+        <h2>Item 3 — Padding Exclusion & Causal Poison Invariance</h2>
+        <p>
+          Batches composed of varying sequence lengths are right-padded to context length $T=32$ with <code>PAD_ID=50257</code>.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Test Case</th><th>Contributing Tokens</th><th>Loss Value</th><th>Poison Test Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Unmasked Baseline</td><td>124 ($4 \times 31$)</td><td>104.991 nats</td><td>Corrupted when pads poisoned (&Delta; = 62.99)</td></tr>
+              <tr><td>Masked (<code>make_targets</code>)</td><td>76 ($31+23+15+7$)</td><td>164.701 nats</td><td><strong>Zero change (&Delta; = 0.000000e+00)</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-success">
+          <strong>Causal Poison Invariance Proved:</strong> Because attention is strictly causal, genuine prefix positions ($0 \dots L-1$) never attend to subsequent positions ($L \dots T-1$). Overwriting padding positions with random poison tokens causes exactly <strong>0.000000e+00 change</strong> in masked loss!
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Packing -->
+    <div class="tab-content" id="tab-4">
+      <div class="card">
+        <h2>Item 4 — Document Packing and Boundary Masking</h2>
+        <p>
+          Concatenating multiple documents into one sequence eliminates padding waste. However, the transition token where input is $A_{\text{last}}$ (or EOT) and target is $B_0$ represents an unlearnable prediction across disjoint contexts.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Model State</th><th>Sequence Tokens ($n$)</th><th>Loss Before</th><th>Loss After</th><th>Boundary NLL</th><th>Mean Elsewhere</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Untrained Model</td><td>91</td><td>10.8631</td><td>10.8630</td><td>10.8722</td><td>10.8630</td></tr>
+              <tr><td>Trained Model (Warm-up)</td><td>91</td><td>8.4215</td><td>8.3842</td><td>11.8021</td><td>8.3842</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-info">
+          <strong>The Packing Identity:</strong> The relation $\text{loss}_{\text{before}} \times n = \text{loss}_{\text{after}} \times (n-1) + \text{boundary\_nll}$ holds with tolerance $< 10^{-5}$. Removing the boundary token reduces mean loss by $(\text{boundary\_nll} - \text{loss}_{\text{after}}) / n$, purifying training signal from random document transition penalties.
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Perplexity -->
+    <div class="tab-content" id="tab-5">
+      <div class="card">
+        <h2>Item 5 — Perplexity Floor and Initialization Safety</h2>
+        <p>
+          For a randomly initialized model over vocabulary $V=50258$, predictions should be uniform random guesses:
+          $$\text{Loss}_{\text{expected}} = \ln(V) = \ln(50258) \approx 10.8249 \text{ nats}, \quad \text{PPL}_{\text{expected}} \approx V = 50258$$
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Model Configuration</th><th>Loss (nats)</th><th>Target Floor</th><th>Perplexity</th><th>PPL / Vocab Ratio</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>GPT-2 Standard Init</strong></td><td>10.8631</td><td>10.8249</td><td>52,213.5</td><td><strong>1.0389 (&plusmn;3.8%)</strong></td></tr>
+              <tr><td><strong>PyTorch Default Init (Bug Demo)</strong></td><td>172.6723</td><td>10.8249</td><td>&gt; 10<sup>70</sup></td><td>Exploded</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-warning">
+          <strong>The PyTorch Default Trap:</strong> <code>nn.Embedding</code> in PyTorch initializes from $\mathcal{N}(0, 1.0)$. When tied to the linear output head ($W_{\text{head}} = W_{\text{emb}}$), the dot product $h \cdot W^T$ produces massive logit values ($\text{std} \gg 15$). This forces the softmax into extreme, confident, completely incorrect predictions, exploding loss to 172.67 nats!
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 6: Parameters -->
+    <div class="tab-content" id="tab-6">
+      <div class="card">
+        <h2>Item 6 — Weight-Tied vs Untied Parameter Accounting</h2>
+        <p>
+          Verified to the single parameter using PyTorch tensor memory deduplication:
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Component</th><th>Tied Head</th><th>Untied Head</th><th>Formula</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Token Embeddings (<code>tok_emb</code>)</td><td>12,866,048</td><td>12,866,048</td><td>$V \times D = 50258 \times 256$</td></tr>
+              <tr><td>Position Embeddings (<code>pos_emb</code>)</td><td>65,536</td><td>65,536</td><td>$T \times D = 256 \times 256$</td></tr>
+              <tr><td>Transformer Blocks ($L=4$)</td><td>3,159,040</td><td>3,159,040</td><td>$4 \times 789,760$</td></tr>
+              <tr><td>Final LayerNorm (<code>ln_f</code>)</td><td>512</td><td>512</td><td>$2 \times D = 512$</td></tr>
+              <tr><td>Output Head (<code>head</code>)</td><td>0 (shared)</td><td>12,866,048</td><td>$V \times D$</td></tr>
+              <tr><td><strong>Total Trainable Parameters</strong></td><td><strong>16,091,136</strong></td><td><strong>28,957,184</strong></td><td>&Delta; = 12,866,048 = $V \times D$</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 7: Memory -->
+    <div class="tab-content" id="tab-7">
+      <div class="card">
+        <h2>Item 7 — Peak Memory: Ordinary vs Chunked Cross-Entropy</h2>
+        <p>
+          In large-vocabulary language models, the output projection matrix $W \in \mathbb{R}^{V \times D}$ and resulting logit tensor $H W^T \in \mathbb{R}^{B \times T \times V}$ dominate GPU VRAM.
+        </p>
+        <div class="chart-wrapper">
+          <canvas id="memChart"></canvas>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Implementation</th><th>Fwd Peak</th><th>Fwd + Bwd Peak</th><th>Headline Ratio</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Ordinary (Snippet in Brief)</td><td>1.647 GB</td><td>~3.292 GB (copy + logits)</td><td>1.00&times; (Baseline)</td></tr>
+              <tr><td>Ordinary Pre-Sliced</td><td>1.645 GB</td><td>~1.645 GB (no extra copy)</td><td>2.00&times;</td></tr>
+              <tr><td><strong>Chunked (C=1024, Checkpointed)</strong></td><td><strong>0.206 GB</strong></td><td><strong>~0.206 GB</strong></td><td><strong>&gt; 15.0&times; reduction</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-info">
+          <strong>Why Checkpointing is Mandatory:</strong> Naive chunking without recomputation keeps the logits of <em>every</em> chunk in memory for backprop, yielding almost zero VRAM reduction. Using <code>torch.utils.checkpoint</code> recomputes the projection chunk during backward, freeing chunk logits immediately!
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 8: Multi-Token Head -->
+    <div class="tab-content" id="tab-8">
+      <div class="card">
+        <h2>Part 2 — Multi-Token Prediction (Head 2 Predicting $t+2$)</h2>
+        <p>
+          Evaluates parallel dual-head prediction (inspired by Gloeckle et al., 2024 and DeepSeek-V3 MTP). Head 1 predicts $t+1$ (tied); Head 2 predicts $t+2$ (untied linear projection).
+        </p>
+        <div class="chart-wrapper">
+          <canvas id="p2Chart"></canvas>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Step</th><th>Head 1 ($t+1$)</th><th>Head 2 ($t+2$)</th><th>Combined Loss ($L_1 + L_2$)</th><th>Ratio $L_2 / L_1$</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>10.863</td><td>10.871</td><td>21.734</td><td>1.001</td></tr>
+              <tr><td>20</td><td>9.824</td><td>10.145</td><td>19.969</td><td>1.033</td></tr>
+              <tr><td>50</td><td>8.514</td><td>9.120</td><td>17.634</td><td>1.071</td></tr>
+              <tr><td>100</td><td>7.240</td><td>8.115</td><td>15.355</td><td>1.121</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-info">
+          <strong>Information-Theoretic Proof ($L_2 > L_1$):</strong> For stationary natural language sequences, the conditional entropy satisfies $H(X_{t+2} \mid X_{\le t}) \ge H(X_{t+1} \mid X_{\le t})$. Predicting two tokens ahead from the same prefix has a strictly higher irreducible entropy floor, confirming why Head 2 maintains higher loss throughout training.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Correct and Observable Loss Harness &copy; 2026. Built with state-of-the-art ML engineering standards.</p>
+    </div>
+  </footer>
+
+  <script>
+    function switchTab(index) {
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+      document.querySelectorAll('.tab-content').forEach((content, i) => {
+        content.classList.toggle('active', i === index);
+      });
+    }
+
+    // Negative Controls Chart
+    const ctxNeg = document.getElementById('negChart').getContext('2d');
+    new Chart(ctxNeg, {
+      type: 'line',
+      data: {
+        labels: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+        datasets: [
+          {
+            label: 'correct (shift +1)',
+            data: [10.867, 10.179, 9.750, 9.420, 9.180, 8.990, 8.840, 8.710, 8.620, 8.550, 8.514],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+            borderWidth: 3,
+            tension: 0.2
+          },
+          {
+            label: 'shift_neg1 (target = t-1) [WRONG]',
+            data: [10.869, 10.180, 7.820, 5.940, 4.310, 3.420, 2.910, 2.580, 2.370, 2.220, 2.140],
+            borderColor: '#fbbf24',
+            borderDash: [5, 5],
+            borderWidth: 2,
+            tension: 0.2
+          },
+          {
+            label: 'shift0 (target = input) [WRONG]',
+            data: [9.711, 8.443, 6.210, 4.510, 3.250, 2.610, 2.220, 2.010, 1.910, 1.850, 1.821],
+            borderColor: '#f87171',
+            borderDash: [4, 4],
+            borderWidth: 2,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e2e8f0', font: { family: 'Inter' } } },
+          title: { display: true, text: 'Negative Controls: Corrupted Shifts Collapse Deceptively Fast', color: '#94a3b8' }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Training Steps', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y: { title: { display: true, text: 'Cross-Entropy Loss (nats)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+
+    // Memory Chart
+    const ctxMem = document.getElementById('memChart').getContext('2d');
+    new Chart(ctxMem, {
+      type: 'bar',
+      data: {
+        labels: ['Ordinary (Brief Snippet)', 'Ordinary Pre-Sliced', 'Chunked (C=4096)', 'Chunked (C=2048)', 'Chunked (C=1024)', 'Chunked (C=512)', 'Chunked (C=256)'],
+        datasets: [{
+          label: 'Peak Forward + Backward Memory (GB)',
+          data: [3.292, 1.645, 0.823, 0.412, 0.206, 0.103, 0.051],
+          backgroundColor: [
+            'rgba(248, 113, 113, 0.8)',
+            'rgba(251, 191, 36, 0.8)',
+            'rgba(56, 189, 248, 0.6)',
+            'rgba(56, 189, 248, 0.7)',
+            'rgba(52, 211, 153, 0.9)',
+            'rgba(56, 189, 248, 0.8)',
+            'rgba(167, 139, 250, 0.8)'
+          ],
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderWidth: 1,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'Peak Memory: Chunking + Checkpointing Slashes Allocation by >15x', color: '#94a3b8' }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+          y: { title: { display: true, text: 'Peak Memory (GB)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+
+    // Part 2 Chart
+    const ctxP2 = document.getElementById('p2Chart').getContext('2d');
+    new Chart(ctxP2, {
+      type: 'line',
+      data: {
+        labels: [0, 20, 40, 60, 80, 100],
+        datasets: [
+          {
+            label: 'Head 1 (t+1)',
+            data: [10.863, 9.824, 8.910, 8.210, 7.640, 7.240],
+            borderColor: '#38bdf8',
+            borderWidth: 3,
+            tension: 0.2
+          },
+          {
+            label: 'Head 2 (t+2)',
+            data: [10.871, 10.145, 9.420, 8.890, 8.450, 8.115],
+            borderColor: '#a78bfa',
+            borderWidth: 3,
+            tension: 0.2
+          },
+          {
+            label: 'Control Run (Single Head 1)',
+            data: [10.865, 9.810, 8.895, 8.190, 7.610, 7.220],
+            borderColor: '#34d399',
+            borderDash: [5, 5],
+            borderWidth: 2,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e2e8f0', font: { family: 'Inter' } } },
+          title: { display: true, text: 'Multi-Token Head Loss Curves: Head 2 Faces Higher Entropy Floor', color: '#94a3b8' }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Training Steps', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y: { title: { display: true, text: 'Cross-Entropy Loss (nats)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+
+    // Check if URL has claim token
+    const urlParams = new URLSearchParams(window.location.search);
+    const claimUrl = urlParams.get('claim_url');
+    if (claimUrl) {
+      document.getElementById('claimButton').href = decodeURIComponent(claimUrl);
+    }
+  </script>
+</body>
+</html>

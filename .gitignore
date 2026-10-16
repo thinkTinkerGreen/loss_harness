@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.netlify/
+.DS_Store
+finish_part2.py

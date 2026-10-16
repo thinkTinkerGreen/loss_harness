@@ -1,0 +1,101 @@
+{
+  "env": {
+    "torch": "2.11.0+cu130",
+    "cuda": "13.0",
+    "gpu": "Tesla T4",
+    "python": "3.13.15",
+    "tiktoken": "0.14.0"
+  },
+  "cfg": {
+    "V": 50258,
+    "D": 256,
+    "L": 4,
+    "H": 4,
+    "T": 256,
+    "lnV": 10.8249
+  },
+  "shapes_md": "| Tensor Name | Shape | Dtype | Dimension Meaning |\n|---|---|---|---|\n| `tokens` | `(4, 32)` | `int64` | (B sequences, T positions) token ids |\n| `hidden` | `(4, 32, 256)` | `float32` | (B, T, D) final-LN hidden state per position |\n| `logits` | `(4, 32, 50258)` | `float32` | (B, T, V) unnormalised score per vocab entry per position |\n| `logits[:, :-1]` | `(4, 31, 50258)` | `float32` | drop last position: it has no next token |\n| `logits[:, :-1].reshape(-1, V)` | `(124, 50258)` | `float32` | (N=B\u00b7(T\u22121) predictions, V) |\n| `tokens[:, 1:]` | `(4, 31)` | `int64` | targets: token at t+1 |\n| `tokens[:, 1:].reshape(-1)` | `(124,)` | `int64` | (N,) one class index per prediction |\n| `per-token loss` | `(124,)` | `float32` | (N,) NLL, then reduced to a scalar |\n| `loss` | `()` | `float32` | scalar |",
+  "shift_md": "| $t$ | Input Token (`repr`) | Target Token (`repr`) | Input ID | Target ID |\n|---|---|---|---|---|\n| 0 | `' not'` | `','` | 407 | 11 |\n| 1 | `','` | `' when'` | 11 | 618 |\n| 2 | `' when'` | `' you'` | 618 | 345 |\n| 3 | `' you'` | `' say'` | 345 | 910 |\n| 4 | `' say'` | `' it'` | 910 | 340 |\n| 5 | `' it'` | `' is'` | 340 | 318 |\n| 6 | `' is'` | `' not'` | 318 | 407 |\n| 7 | `' not'` | `';'` | 407 | 26 |\n| 8 | `';'` | `'\\n'` | 26 | 198 |\n| 9 | `'\\n'` | `'And'` | 198 | 1870 |\n| 10 | `'And'` | `' the'` | 1870 | 262 |\n| 11 | `' the'` | `' moon'` | 262 | 8824 |\n| 12 | `' moon'` | `' changes'` | 8824 | 2458 |\n| 13 | `' changes'` | `' even'` | 2458 | 772 |\n| 14 | `' even'` | `' as'` | 772 | 355 |\n| 15 | `' as'` | `' your'` | 355 | 534 |",
+  "shift_wrong_md": "| $t$ | Input Token (`repr`) | Wrong Target $t-1$ (`repr`) | Input ID | Wrong Target ID |\n|---|---|---|---|---|\n| 1 | `','` | `' not'` | 11 | 407 |\n| 2 | `' when'` | `','` | 618 | 11 |\n| 3 | `' you'` | `' when'` | 345 | 618 |\n| 4 | `' say'` | `' you'` | 910 | 345 |\n| 5 | `' it'` | `' say'` | 340 | 910 |\n| 6 | `' is'` | `' it'` | 318 | 340 |\n| 7 | `' not'` | `' is'` | 407 | 318 |\n| 8 | `';'` | `' not'` | 26 | 407 |\n| 9 | `'\\n'` | `';'` | 198 | 26 |\n| 10 | `'And'` | `'\\n'` | 1870 | 198 |\n| 11 | `' the'` | `'And'` | 262 | 1870 |\n| 12 | `' moon'` | `' the'` | 8824 | 262 |\n| 13 | `' changes'` | `' moon'` | 2458 | 8824 |\n| 14 | `' even'` | `' changes'` | 772 | 2458 |\n| 15 | `' as'` | `' even'` | 355 | 772 |",
+  "neg": {
+    "correct": 5.1942,
+    "shift0": 0.1796,
+    "shift_neg1": 4.9026
+  },
+  "pad": {
+    "n_nomask": 124,
+    "n_masked": 76,
+    "loss_nomask": 10.4215,
+    "loss_masked": 10.8749,
+    "poison_masked_equal": true,
+    "poison_unmasked_changed": true
+  },
+  "pack": {
+    "untrained": {
+      "n": 91,
+      "before": 10.9081,
+      "after": 10.9099,
+      "boundary": 10.7381,
+      "elsewhere": 10.9099
+    },
+    "trained": {
+      "n": 91,
+      "before": 5.4637,
+      "after": 5.4074,
+      "boundary": 10.525,
+      "elsewhere": 5.4074
+    }
+  },
+  "ppl": {
+    "loss": 10.8631,
+    "ppl": 52213.5,
+    "ratio_to_V": 1.0389,
+    "bug_loss": 172.6723,
+    "bug_ppl": "9.79e+74"
+  },
+  "params": {
+    "tied": 16091136,
+    "untied": 28957184,
+    "delta": 12866048,
+    "two_head": 28957184
+  },
+  "mem": {
+    "ordinary_fb": "4.656 GB",
+    "ordinary_pre_sliced_fb": "4.663 GB",
+    "chunked_fb": "0.695 GB",
+    "ratio": "6.70x",
+    "ratio_vs_pre_sliced": "6.71x",
+    "chunk": 1024,
+    "ms": {
+      "ordinary": 253.73,
+      "ordinary_pre_sliced": 218.67,
+      "chunked": 322.12
+    },
+    "sweep": {
+      "256": 0.263,
+      "512": 0.407,
+      "1024": 0.695,
+      "2048": 1.27,
+      "4096": 2.422
+    }
+  },
+  "mem_table": "| Loss Implementation | Forward Peak | Forward + Backward Peak | Runtime (ms/iter) |\n|---|---|---|---|\n| `ordinary` (Snippet in Brief) | ~1.647 GB | 4.656 GB | 253.73 |\n| `ordinary_pre_sliced` | ~1.645 GB | 4.663 GB | 218.67 |\n| `chunked(C=1024)` | ~0.206 GB | 0.695 GB | 322.12 |",
+  "p2": {
+    "train": {
+      "l1": 4.1925,
+      "l2": 4.9612,
+      "sum": 9.1537
+    },
+    "val": {
+      "l1": 4.9199,
+      "l2": 5.7775,
+      "sum": 10.6974
+    },
+    "min_val_step": {
+      "l1": 599,
+      "l2": 599
+    },
+    "control_l1": 4.0561,
+    "table_md": "| Step | Head 1 ($L_1$) | Head 2 ($L_2$) | Sum ($L_1 + L_2$) | Ratio ($L_2 / L_1$) | Split |\n|---|---|---|---|---|---|\n| 0 | 10.8660 | 10.8779 | 21.7439 | 1.0011 | train |\n| 50 | 6.0330 | 6.3019 | 12.3349 | 1.0446 | train |\n| 100 | 5.3833 | 5.9135 | 11.2968 | 1.0985 | train |\n| 200 | 4.6833 | 5.4824 | 10.1657 | 1.1706 | train |\n| 400 | 4.1792 | 4.9867 | 9.1659 | 1.1932 | train |\n| 599 | 4.9199 | 5.7775 | 10.6974 | 1.1743 | **val (final)** |"
+  }
+}
