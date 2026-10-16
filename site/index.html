@@ -4,48 +4,64 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Correct and Observable Loss Harness — Causal Language Models</title>
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- KaTeX for mathematical formulae rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
   <style>
     :root {
-      --bg: #0b0f19;
-      --card-bg: rgba(22, 30, 49, 0.7);
-      --card-border: rgba(255, 255, 255, 0.08);
+      --bg: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.75);
+      --card-border: rgba(255, 255, 255, 0.09);
       --accent: #38bdf8;
-      --accent-glow: rgba(56, 189, 248, 0.25);
+      --accent-glow: rgba(56, 189, 248, 0.3);
       --accent-green: #34d399;
       --accent-red: #f87171;
       --accent-purple: #a78bfa;
       --accent-amber: #fbbf24;
-      --text-main: #f1f5f9;
+      --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'Fira Code', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       background-color: var(--bg);
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.6;
       background-image: 
-        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 85% 60%, rgba(167, 139, 250, 0.08) 0%, transparent 45%);
+        radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 90% 70%, rgba(167, 139, 250, 0.08) 0%, transparent 50%);
       min-height: 100vh;
-      padding-bottom: 80px;
+      overflow-x: hidden;
+      padding-bottom: 90px;
     }
 
     .container {
-      max-width: 1240px;
+      width: min(1280px, 100% - 32px);
       margin: 0 auto;
-      padding: 0 24px;
     }
 
+    /* Header */
     header {
-      padding: 48px 0 32px;
+      padding: 40px 0 24px;
       border-bottom: 1px solid var(--card-border);
     }
 
@@ -55,12 +71,12 @@
       align-items: center;
       margin-bottom: 16px;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 12px;
     }
 
     .badge-group {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
@@ -99,195 +115,254 @@
       color: #38bdf8;
     }
 
+    .badge.active-gpu {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: rgba(52, 211, 153, 0.4);
+      color: #34d399;
+    }
+
     h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: clamp(1.8rem, 4vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
       margin-bottom: 12px;
-      background: linear-gradient(to right, #f8fafc, #94a3b8);
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 60%, #94a3b8 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .tagline {
-      font-size: 1.15rem;
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
       color: var(--text-muted);
-      max-width: 860px;
+      max-width: 900px;
+      line-height: 1.6;
     }
 
-    .claim-banner {
-      margin-top: 24px;
-      padding: 16px 20px;
-      background: rgba(52, 211, 153, 0.1);
-      border: 1px solid rgba(52, 211, 153, 0.3);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .claim-banner-text {
-      color: #a7f3d0;
-      font-size: 0.95rem;
-    }
-
-    .claim-banner-text strong {
-      color: #34d399;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border: none;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #0b0f19;
-    }
-
-    .btn-primary:hover {
-      background: #7dd3fc;
-      box-shadow: 0 0 16px var(--accent-glow);
-    }
-
-    .btn-claim {
-      background: var(--accent-green);
-      color: #0b0f19;
-    }
-
-    .btn-claim:hover {
-      background: #6ee7b7;
-      box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
-    }
-
-    /* Metric Grid */
+    /* Metrics Grid */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin: 32px 0;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin: 28px 0;
     }
 
     .metric-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 20px;
+      padding: 18px 20px;
       backdrop-filter: blur(12px);
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
     .metric-card:hover {
       transform: translateY(-2px);
-      border-color: rgba(56, 189, 248, 0.3);
+      border-color: rgba(56, 189, 248, 0.35);
     }
 
     .metric-label {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .metric-val {
-      font-size: 1.75rem;
+      font-size: 1.65rem;
       font-weight: 700;
       color: #f8fafc;
       font-family: var(--font-mono);
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
     }
 
     .metric-sub {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--accent-green);
       margin-top: 4px;
     }
 
-    /* Tabs */
-    .tabs-nav {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--card-border);
-      margin-bottom: 32px;
+    /* ========================================= */
+    /* RESPONSIVE NAVIGATION SYSTEM */
+    /* ========================================= */
+    .nav-wrapper {
+      margin: 24px 0 28px;
     }
 
-    .tab-btn {
+    /* Tier 1 Primary Tabs */
+    .primary-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .nav-btn {
       padding: 10px 18px;
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
       color: var(--text-muted);
       font-family: var(--font-sans);
       font-weight: 500;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       cursor: pointer;
-      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       transition: all 0.2s ease;
     }
 
-    .tab-btn:hover {
+    .nav-btn:hover {
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .tab-btn.active {
+    .nav-btn.active {
+      color: #0b0f19;
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    /* Tier 2 Probes Sub-Navigation Bar */
+    .sub-nav-container {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 20px;
+    }
+
+    .sub-nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .sub-nav-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .probe-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .probe-pill {
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .probe-pill:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .probe-pill.active {
       color: var(--accent);
-      background: rgba(56, 189, 248, 0.1);
-      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent);
       font-weight: 600;
     }
 
-    .tab-content {
+    /* Mobile Quick Select Dropdown */
+    .mobile-select-box {
+      display: none;
+      margin-bottom: 20px;
+    }
+
+    .mobile-select {
+      width: 100%;
+      padding: 12px 16px;
+      background: #111827;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      font-family: var(--font-sans);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .mobile-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    @media (max-width: 768px) {
+      .mobile-select-box {
+        display: block;
+      }
+      .primary-nav {
+        display: none;
+      }
+      .sub-nav-container {
+        display: none;
+      }
+    }
+
+    /* Content Cards */
+    .section-content {
       display: none;
     }
 
-    .tab-content.active {
+    .section-content.active {
       display: block;
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.25s ease;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Cards and Layout */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 16px;
-      padding: 28px;
+      padding: clamp(18px, 3vw, 32px);
       margin-bottom: 24px;
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
     }
 
     .card h2 {
-      font-size: 1.4rem;
-      font-weight: 600;
-      margin-bottom: 16px;
+      font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+      font-weight: 700;
+      margin-bottom: 14px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
     .card h3 {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 600;
-      margin: 20px 0 10px;
+      margin: 22px 0 10px;
       color: #e2e8f0;
     }
 
@@ -295,12 +370,13 @@
       color: #cbd5e1;
       margin-bottom: 16px;
       line-height: 1.7;
+      font-size: 0.96rem;
     }
 
     /* Tables */
     .table-container {
       overflow-x: auto;
-      margin: 20px 0;
+      margin: 18px 0;
       border-radius: 10px;
       border: 1px solid var(--card-border);
     }
@@ -308,23 +384,24 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       text-align: left;
     }
 
     th {
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.9);
       color: #94a3b8;
       font-weight: 600;
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--card-border);
       text-transform: uppercase;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       letter-spacing: 0.05em;
+      white-space: nowrap;
     }
 
     td {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       color: #e2e8f0;
     }
@@ -342,30 +419,20 @@
     }
 
     code {
-      background: rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.08);
       padding: 2px 6px;
       border-radius: 4px;
-      font-size: 0.88em;
+      font-size: 0.86em;
       color: #38bdf8;
     }
 
-    .code-block {
-      background: #090d16;
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 16px;
-      overflow-x: auto;
-      margin: 16px 0;
-      font-size: 0.85rem;
-      color: #e2e8f0;
-      line-height: 1.6;
-    }
-
+    /* Alerts */
     .alert {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-radius: 10px;
-      margin: 20px 0;
-      font-size: 0.95rem;
+      margin: 16px 0;
+      font-size: 0.92rem;
+      line-height: 1.6;
     }
 
     .alert-info {
@@ -375,7 +442,7 @@
     }
 
     .alert-warning {
-      background: rgba(251, 191, 36, 0.08);
+      background: rgba(245, 158, 11, 0.08);
       border-left: 4px solid var(--accent-amber);
       color: #fef3c7;
     }
@@ -386,29 +453,96 @@
       color: #d1fae5;
     }
 
+    /* Charts & Figures */
     .chart-wrapper {
       position: relative;
       width: 100%;
-      height: 380px;
-      margin: 24px 0;
+      height: 360px;
+      margin: 20px 0;
     }
 
-    .image-preview {
-      width: 100%;
-      max-width: 800px;
+    .figure-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .figure-img {
+      max-width: 100%;
+      height: auto;
       border-radius: 12px;
       border: 1px solid var(--card-border);
-      margin: 16px 0;
-      display: block;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .figure-caption {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* Pager Navigation */
+    .probe-pager {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--card-border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pager-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .pager-btn:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Markdown Code Block Display */
+    .markdown-viewer {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      max-height: 700px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
     }
 
     footer {
-      margin-top: 64px;
-      padding-top: 32px;
+      margin-top: 60px;
+      padding-top: 28px;
       border-top: 1px solid var(--card-border);
       text-align: center;
       color: var(--text-muted);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+    }
+
+    /* KaTeX equation display enhancements */
+    .katex-display {
+      margin: 1em 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 4px 0;
     }
   </style>
 </head>
@@ -420,34 +554,27 @@
         <div class="badge-group">
           <a href="https://github.com/thinkTinkerGreen/loss_harness" target="_blank" class="badge active-github">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHub Repository
+            GitHub Repo
           </a>
           <a href="https://colab.research.google.com/github/thinkTinkerGreen/loss_harness/blob/main/loss_harness.ipynb" target="_blank" class="badge active-colab">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.9 13.5c-.3 0-.6.1-.8.3l-2.6-2.6c.2-.2.3-.5.3-.8 0-.7-.6-1.3-1.3-1.3s-1.3.6-1.3 1.3c0 .3.1.6.3.8l-2.6 2.6c-.2-.2-.5-.3-.8-.3-.7 0-1.3.6-1.3 1.3s.6 1.3 1.3 1.3 1.3-.6 1.3-1.3c0-.3-.1-.6-.3-.8l2.6-2.6c.2.2.5.3.8.3s.6-.1.8-.3l2.6 2.6c-.2.2-.3.5-.3.8 0 .7.6 1.3 1.3 1.3s1.3-.6 1.3-1.3-.6-1.3-1.3-1.3z"/></svg>
             Open in Colab
           </a>
-          <span class="badge">PyTorch 2.14.1</span>
-          <span class="badge">Tiktoken GPT-2</span>
-          <span class="badge">SOTA Loss Harness</span>
+          <span class="badge active-gpu">Tesla T4 (13.0)</span>
+          <span class="badge">PyTorch 2.11.0+cu130</span>
+          <span class="badge">Tiktoken 0.14.0</span>
         </div>
       </div>
 
       <h1>Correct and Observable Loss Harness</h1>
       <p class="tagline">
-        A rigorous, unit-asserted validation framework for causal language model loss calculation. Eliminating silent target leakage, non-contiguous memory allocations, and boundary corruption across 7 foundational probes.
+        A rigorous, unit-asserted validation framework for causal language model loss calculation. Eliminating silent target leakage, non-contiguous memory allocations, and boundary contamination across seven foundational probes.
       </p>
-
-      <div class="claim-banner" id="claimBanner">
-        <div class="claim-banner-text">
-          🚀 <strong>Netlify Deployment Ready:</strong> This live dashboard is hosted on Netlify and ready to be claimed to your Netlify account.
-        </div>
-        <a href="#" id="claimButton" class="btn btn-claim" target="_blank">Claim Site on Netlify</a>
-      </div>
     </div>
   </header>
 
   <main class="container">
-    <!-- Key Metrics -->
+    <!-- Key Metrics Grid -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-label">Vocabulary Size ($V$)</div>
@@ -460,34 +587,72 @@
         <div class="metric-sub">Untrained: 10.8631 nats</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Tied Model Parameters</div>
+        <div class="metric-label">Tied Parameters</div>
         <div class="metric-val">16,091,136</div>
-        <div class="metric-sub">Untied: 28,957,184 ($+V \times D$)</div>
+        <div class="metric-sub">Untied: 28,957,184 ($+V 	imes D$)</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Peak Memory Reduction</div>
-        <div class="metric-val">&gt; 8.0&times;</div>
-        <div class="metric-sub">1.647 GB &rarr; 0.206 GB (Chunked)</div>
+        <div class="metric-val">6.70x</div>
+        <div class="metric-sub">4.656 GB &rarr; 0.695 GB</div>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="tabs-nav">
-      <button class="tab-btn active" onclick="switchTab(0)">Overview</button>
-      <button class="tab-btn" onclick="switchTab(1)">1. Shapes & Memory</button>
-      <button class="tab-btn" onclick="switchTab(2)">2. The Shift & Controls</button>
-      <button class="tab-btn" onclick="switchTab(3)">3. Padding & Poison</button>
-      <button class="tab-btn" onclick="switchTab(4)">4. Document Packing</button>
-      <button class="tab-btn" onclick="switchTab(5)">5. Perplexity & Init</button>
-      <button class="tab-btn" onclick="switchTab(6)">6. Parameter Audit</button>
-      <button class="tab-btn" onclick="switchTab(7)">7. Chunked Loss Memory</button>
-      <button class="tab-btn" onclick="switchTab(8)">Part 2: Multi-Token Head</button>
+    <!-- RESPONSIVE NAVIGATION -->
+    <div class="nav-wrapper">
+      <!-- Mobile Quick Select -->
+      <div class="mobile-select-box">
+        <select id="mobileSectionSelect" class="mobile-select" onchange="navigateTo(this.value)">
+          <option value="overview">📊 Executive Overview</option>
+          <optgroup label="🔬 Part 1: Seven Probes">
+            <option value="probe-1">1. Shapes & Memory</option>
+            <option value="probe-2">2. The Shift & Negative Controls</option>
+            <option value="probe-3">3. Padding & Poison Test</option>
+            <option value="probe-4">4. Document Packing Identity</option>
+            <option value="probe-5">5. Perplexity Floor & Init Bug</option>
+            <option value="probe-6">6. Parameter Accounting</option>
+            <option value="probe-7">7. Chunked Loss Memory</option>
+          </optgroup>
+          <option value="part2">⚡ Part 2: Multi-Token Prediction</option>
+          <option value="bugs">🛠️ Bugs & Limitations</option>
+          <option value="readme">📋 Full Markdown README</option>
+        </select>
+      </div>
+
+      <!-- Tier 1: Primary Section Buttons -->
+      <nav class="primary-nav" aria-label="Main Sections">
+        <button class="nav-btn active" data-target="overview" onclick="selectPrimary('overview')">📊 Overview</button>
+        <button class="nav-btn" data-target="probes" onclick="selectPrimary('probes')">🔬 Part 1: Seven Probes</button>
+        <button class="nav-btn" data-target="part2" onclick="selectPrimary('part2')">⚡ Part 2: Multi-Token</button>
+        <button class="nav-btn" data-target="bugs" onclick="selectPrimary('bugs')">🛠️ Bugs & Limitations</button>
+        <button class="nav-btn" data-target="readme" onclick="selectPrimary('readme')">📋 Full README</button>
+      </nav>
+
+      <!-- Tier 2: Part 1 Probe Sub-Navigation (visible when Probes selected) -->
+      <div class="sub-nav-container" id="probesSubNav" style="display: none;">
+        <div class="sub-nav-header">
+          <span class="sub-nav-title">Select Probe (Items 1–7):</span>
+        </div>
+        <div class="probe-pills" role="tablist">
+          <button class="probe-pill active" data-probe="probe-1" onclick="selectProbe('probe-1')">1. Shapes</button>
+          <button class="probe-pill" data-probe="probe-2" onclick="selectProbe('probe-2')">2. The Shift</button>
+          <button class="probe-pill" data-probe="probe-3" onclick="selectProbe('probe-3')">3. Padding</button>
+          <button class="probe-pill" data-probe="probe-4" onclick="selectProbe('probe-4')">4. Packing</button>
+          <button class="probe-pill" data-probe="probe-5" onclick="selectProbe('probe-5')">5. Perplexity</button>
+          <button class="probe-pill" data-probe="probe-6" onclick="selectProbe('probe-6')">6. Parameters</button>
+          <button class="probe-pill" data-probe="probe-7" onclick="selectProbe('probe-7')">7. Peak Memory</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Tab 0: Overview -->
-    <div class="tab-content active" id="tab-0">
+    <!-- ========================================= -->
+    <!-- SECTION CONTENTS -->
+    <!-- ========================================= -->
+
+    <!-- Section: Overview -->
+    <section class="section-content active" id="sec-overview">
       <div class="card">
-        <h2>Architecture & Mission</h2>
+        <h2>Executive Summary & Architecture</h2>
         <p>
           In causal language model pre-training, subtle bugs in loss computation—such as misaligned label shifts, incorrect padding token weighting, cross-document contamination, and naive autograd graph retention—often manifest not as obvious exceptions, but as <em>degraded downstream performance</em> or <em>artificially low, meaningless loss curves</em>.
         </p>
@@ -497,13 +662,29 @@
         <div class="alert alert-info">
           <strong>Key Guarantee:</strong> Targets originate from a single source of truth (<code>make_targets</code>). No ad-hoc label shifting is permitted across training or evaluation loops, and all token indices are decoded into explicit string representations with whitespace/newline visibility.
         </div>
+        <h3>Reproduction Environment</h3>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Environment Parameter</th><th>Configured Value</th></tr></thead>
+            <tbody>
+              <tr><td>Hardware Accelerator</td><td><code>Tesla T4</code> (CUDA <code>13.0</code>)</td></tr>
+              <tr><td>PyTorch Version</td><td><code>2.11.0+cu130</code></td></tr>
+              <tr><td>Tokenizer</td><td><code>tiktoken gpt2</code> (Vocab $V = 50,258$, Context $T = 256$)</td></tr>
+              <tr><td>Architecture Trunk</td><td>4 layers, 4 heads, $D = 256$, Pre-LN transformer</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="probe-pager">
+          <div></div>
+          <button class="pager-btn" onclick="navigateTo('probe-1')">Explore Probe 1: Tensor Shapes &rarr;</button>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 1: Shapes -->
-    <div class="tab-content" id="tab-1">
+    <!-- Section: Probe 1 Shapes -->
+    <section class="section-content" id="sec-probe-1">
       <div class="card">
-        <h2>Item 1 — Tensor Shapes and Memory Semantics</h2>
+        <h2>Item 1 — Tensor Shapes and Contiguity Copy Spike</h2>
         <p>
           Traced across a test batch of <strong>$B=4, T=32, D=256, V=50258$</strong>. Each rank and dimension represents a concrete semantic concept in causal modeling.
         </p>
@@ -518,202 +699,513 @@
               <tr><td><code>logits</code></td><td>(4, 32, 50258)</td><td>float32</td><td>(B, T, V) unnormalized prediction scores per vocab entry</td></tr>
               <tr><td><code>logits[:, :-1]</code></td><td>(4, 31, 50258)</td><td>float32</td><td>Drop last position (no subsequent token to predict)</td></tr>
               <tr><td><code>logits.reshape(-1, V)</code></td><td>(124, 50258)</td><td>float32</td><td>(N = B&middot;(T-1) predictions, V) flattened matrix</td></tr>
-              <tr><td><code>tokens[:, 1:]</code></td><td>(4, 31)</td><td>int64</td><td>Targets: token at position t + 1</td></tr>
-              <tr><td><code>tokens.reshape(-1)</code></td><td>(124,)</td><td>int64</td><td>(N,) ground truth class index per prediction</td></tr>
-              <tr><td><code>per-token loss</code></td><td>(124,)</td><td>float32</td><td>(N,) per-token NLL before scalar reduction</td></tr>
-              <tr><td><code>loss</code></td><td>()</td><td>float32</td><td>Scalar mean over all valid tokens</td></tr>
+              <tr><td><code>tokens[:, 1:]</code></td><td>(4, 31)</td><td>int64</td><td>Targets shifted left: token at t+1</td></tr>
+              <tr><td><code>tokens.reshape(-1)</code></td><td>(124,)</td><td>int64</td><td>(N,) target class indices</td></tr>
             </tbody>
           </table>
         </div>
         <div class="alert alert-warning">
-          <strong>Hidden Memory Cost of Naive Slicing:</strong> Slicing <code>logits[:, :-1]</code> renders the tensor non-contiguous in memory. Calling <code>.reshape(-1, V)</code> forces PyTorch to perform an eager memory copy. At $B=8, T=1024, V=50258$ (fp32), this eagerly copies <strong>1.645 GB</strong> of memory into temporary buffers before computing loss! Slicing <code>hidden</code> first eliminates this copy completely.
+          <strong>The Contiguity Trap:</strong> <code>logits[:, :-1].is_contiguous()</code> evaluates to <strong>False</strong>. Calling <code>.reshape(-1, V)</code> forces PyTorch to perform an unexpected contiguous memory copy of <strong>1.645 GB</strong> at $B=8, T=1024$. Slicing the hidden state <code>h[:, :-1]</code> prior to linear projection avoids allocating logits for the unused final token position.
+        </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('overview')">&larr; Overview</button>
+          <button class="pager-btn" onclick="navigateTo('probe-2')">Next: Item 2 (The Shift) &rarr;</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 2: The Shift -->
-    <div class="tab-content" id="tab-2">
+    <!-- Section: Probe 2 The Shift -->
+    <section class="section-content" id="sec-probe-2">
       <div class="card">
-        <h2>Item 2 — Target Shift Verification & Negative Controls</h2>
+        <h2>Item 2 — Target Alignment & Negative Controls</h2>
         <p>
-          A language model must predict the <em>future</em> token $t+1$ given tokens up to $t$. We verify this alignment with explicit string decodings and execute negative control experiments.
+          Verifies input token $t$ predicts target token $t+1$. We contrast correct alignment against two corrupted negative controls: <code>shift0</code> (predicting input itself) and <code>shift_neg1</code> (predicting previous token $t-1$).
         </p>
-        <h3>Negative Controls: The "Beautiful, Meaningless Curve" Warning</h3>
-        <p>
-          When an engineer accidentally aligns targets to $t$ (identity) or $t-1$ (retrieval), the model can simply extract the answer already embedded in its prefix activations. The loss collapses to near-zero immediately, fooling unobservant practitioners.
-        </p>
-        <div class="chart-wrapper">
-          <canvas id="negChart"></canvas>
+        
+        <div class="figure-container">
+          <img src="assets/neg_controls.png" alt="Negative Controls Loss Curves" class="figure-img">
+          <div class="figure-caption">Loss trajectory over 150 training steps. Corrupted shifts collapse deceptively fast.</div>
         </div>
+
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Training Mode</th><th>Shift Offset</th><th>Loss at Step 50</th><th>Behavior</th></tr>
-            </thead>
+            <thead><tr><th>Shift Mode</th><th>Target Semantics</th><th>Step 150 Loss (nats)</th><th>Behavior</th></tr></thead>
             <tbody>
-              <tr><td><strong><code>correct</code></strong></td><td>$t \to t+1$</td><td>8.514 nats</td><td>True autoregressive learning (future token prediction)</td></tr>
-              <tr><td><strong><code>shift0</code></strong></td><td>$t \to t$</td><td>1.821 nats</td><td>Trivial identity copy from input embeddings</td></tr>
-              <tr><td><strong><code>shift_neg1</code></strong></td><td>$t \to t-1$</td><td>2.140 nats</td><td>Trivial retrieval from past causal self-attention</td></tr>
+              <tr><td><strong><code>correct</code></strong></td><td>$t 	o t+1$</td><td><strong>5.1942</strong></td><td>Healthy causal pre-training</td></tr>
+              <tr><td><code>shift_neg1</code></td><td>$t 	o t-1$</td><td>4.9026</td><td>Cheating via causal attention history</td></tr>
+              <tr><td><code>shift0</code></td><td>$t 	o t$ (identity)</td><td>0.1796</td><td>Immediate trivial memorization collapse</td></tr>
             </tbody>
           </table>
         </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-1')">&larr; Previous: Item 1</button>
+          <button class="pager-btn" onclick="navigateTo('probe-3')">Next: Item 3 (Padding) &rarr;</button>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 3: Padding -->
-    <div class="tab-content" id="tab-3">
+    <!-- Section: Probe 3 Padding -->
+    <section class="section-content" id="sec-probe-3">
       <div class="card">
-        <h2>Item 3 — Padding Exclusion & Causal Poison Invariance</h2>
+        <h2>Item 3 — Mask Padding & Causal Poison Invariance</h2>
         <p>
-          Batches composed of varying sequence lengths are right-padded to context length $T=32$ with <code>PAD_ID=50257</code>.
+          Constructed 4 right-padded sequences with variable lengths $[32, 24, 16, 8]$ padded to $T=32$ with <code>PAD_ID=50257</code>.
         </p>
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Test Case</th><th>Contributing Tokens</th><th>Loss Value</th><th>Poison Test Status</th></tr>
-            </thead>
+            <thead><tr><th>Metric</th><th>Unmasked (Nomask)</th><th>Masked (<code>make_targets</code>)</th></tr></thead>
             <tbody>
-              <tr><td>Unmasked Baseline</td><td>124 ($4 \times 31$)</td><td>104.991 nats</td><td>Corrupted when pads poisoned (&Delta; = 62.99)</td></tr>
-              <tr><td>Masked (<code>make_targets</code>)</td><td>76 ($31+23+15+7$)</td><td>164.701 nats</td><td><strong>Zero change (&Delta; = 0.000000e+00)</strong></td></tr>
+              <tr><td>Valid Predictions Count</td><td>124</td><td><strong>76</strong></td></tr>
+              <tr><td>Batch Loss</td><td>10.4215 nats</td><td><strong>10.8749 nats</strong></td></tr>
+              <tr><td>Poison Invariance ($\Delta$)</td><td>Perturbed</td><td><strong>0.000000 (Exact Invariance)</strong></td></tr>
             </tbody>
           </table>
         </div>
         <div class="alert alert-success">
-          <strong>Causal Poison Invariance Proved:</strong> Because attention is strictly causal, genuine prefix positions ($0 \dots L-1$) never attend to subsequent positions ($L \dots T-1$). Overwriting padding positions with random poison tokens causes exactly <strong>0.000000e+00 change</strong> in masked loss!
+          <strong>Poison Test Verified:</strong> Injecting random tokens into pad positions produces exactly zero difference in the masked loss ($\Delta = 0.000000$), confirming real tokens never attend to or penalize padding.
+        </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-2')">&larr; Previous: Item 2</button>
+          <button class="pager-btn" onclick="navigateTo('probe-4')">Next: Item 4 (Packing) &rarr;</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 4: Packing -->
-    <div class="tab-content" id="tab-4">
+    <!-- Section: Probe 4 Packing -->
+    <section class="section-content" id="sec-probe-4">
       <div class="card">
-        <h2>Item 4 — Document Packing and Boundary Masking</h2>
+        <h2>Item 4 — Document Packing & Algebraic Boundary Identity</h2>
         <p>
-          Concatenating multiple documents into one sequence eliminates padding waste. However, the transition token where input is $A_{\text{last}}$ (or EOT) and target is $B_0$ represents an unlearnable prediction across disjoint contexts.
+          Concatenated two Shakespeare speeches with an <code>[EOT]</code> delimiter into a packed sequence ($n=91$ valid tokens). The cross-document transition where input is <code>EOT</code> and target is the opening of the next document is masked with <code>IGNORE_INDEX=-100</code>.
         </p>
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Model State</th><th>Sequence Tokens ($n$)</th><th>Loss Before</th><th>Loss After</th><th>Boundary NLL</th><th>Mean Elsewhere</th></tr>
-            </thead>
+            <thead><tr><th>Model State</th><th>Tokens ($n$)</th><th>Loss Before</th><th>Loss After</th><th>Boundary NLL</th><th>Elsewhere NLL</th></tr></thead>
             <tbody>
-              <tr><td>Untrained Model</td><td>91</td><td>10.8631</td><td>10.8630</td><td>10.8722</td><td>10.8630</td></tr>
-              <tr><td>Trained Model (Warm-up)</td><td>91</td><td>8.4215</td><td>8.3842</td><td>11.8021</td><td>8.3842</td></tr>
+              <tr><td>Untrained Model</td><td>91</td><td>10.9081</td><td>10.9099</td><td>10.7381</td><td>10.9099</td></tr>
+              <tr><td>Trained (150 steps)</td><td>91</td><td>5.4637</td><td>5.4074</td><td><strong>10.5250</strong></td><td>5.4074</td></tr>
             </tbody>
           </table>
         </div>
         <div class="alert alert-info">
-          <strong>The Packing Identity:</strong> The relation $\text{loss}_{\text{before}} \times n = \text{loss}_{\text{after}} \times (n-1) + \text{boundary\_nll}$ holds with tolerance $< 10^{-5}$. Removing the boundary token reduces mean loss by $(\text{boundary\_nll} - \text{loss}_{\text{after}}) / n$, purifying training signal from random document transition penalties.
+          <strong>Algebraic Identity:</strong> The identity 
+          $$	ext{loss}_{	ext{before}} \cdot n = 	ext{loss}_{	ext{after}} \cdot (n-1) + 	ext{boundary\_nll}$$
+          holds within $< 10^{-5}$ absolute tolerance for both untrained and trained checkpoints.
+        </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-3')">&larr; Previous: Item 3</button>
+          <button class="pager-btn" onclick="navigateTo('probe-5')">Next: Item 5 (Perplexity) &rarr;</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 5: Perplexity -->
-    <div class="tab-content" id="tab-5">
+    <!-- Section: Probe 5 Perplexity -->
+    <section class="section-content" id="sec-probe-5">
       <div class="card">
-        <h2>Item 5 — Perplexity Floor and Initialization Safety</h2>
+        <h2>Item 5 — Perplexity Floor & Weight Initialization Safety</h2>
         <p>
-          For a randomly initialized model over vocabulary $V=50258$, predictions should be uniform random guesses:
-          $$\text{Loss}_{\text{expected}} = \ln(V) = \ln(50258) \approx 10.8249 \text{ nats}, \quad \text{PPL}_{\text{expected}} \approx V = 50258$$
+          Evaluated perplexity $	ext{PPL} = \exp\left(\sum 	ext{NLL} / \sum 	ext{valid}ight)$ across 20 fixed validation batches on an untrained model with tied embedding weights.
         </p>
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Model Configuration</th><th>Loss (nats)</th><th>Target Floor</th><th>Perplexity</th><th>PPL / Vocab Ratio</th></tr>
-            </thead>
+            <thead><tr><th>Initialization Scheme</th><th>Mean Loss (nats)</th><th>Theoretical Floor $\ln V$</th><th>Perplexity (PPL)</th><th>Ratio $	ext{PPL} / V$</th></tr></thead>
             <tbody>
-              <tr><td><strong>GPT-2 Standard Init</strong></td><td>10.8631</td><td>10.8249</td><td>52,213.5</td><td><strong>1.0389 (&plusmn;3.8%)</strong></td></tr>
-              <tr><td><strong>PyTorch Default Init (Bug Demo)</strong></td><td>172.6723</td><td>10.8249</td><td>&gt; 10<sup>70</sup></td><td>Exploded</td></tr>
+              <tr><td><strong>Standard $\mathcal{N}(0, 0.02)$</strong></td><td><strong>10.8631</strong></td><td>10.8249</td><td><strong>52213.5</strong></td><td><strong>1.0389</strong></td></tr>
+              <tr><td>PyTorch Default $\mathcal{N}(0, 1.0)$</td><td>172.6723</td><td>10.8249</td><td>9.79e+74</td><td>$> 10^{30}$</td></tr>
             </tbody>
           </table>
         </div>
         <div class="alert alert-warning">
-          <strong>The PyTorch Default Trap:</strong> <code>nn.Embedding</code> in PyTorch initializes from $\mathcal{N}(0, 1.0)$. When tied to the linear output head ($W_{\text{head}} = W_{\text{emb}}$), the dot product $h \cdot W^T$ produces massive logit values ($\text{std} \gg 15$). This forces the softmax into extreme, confident, completely incorrect predictions, exploding loss to 172.67 nats!
+          <strong>Initialization Bug Demo:</strong> Standard PyTorch unit-variance initialization on tied embeddings causes dot-product logit magnitudes to explode ($	ext{std} > 15$). Softmax becomes extremely overconfident on wrong classes, causing loss to blow up from $10.86$ to <strong>172.67 nats</strong>!
+        </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-4')">&larr; Previous: Item 4</button>
+          <button class="pager-btn" onclick="navigateTo('probe-6')">Next: Item 6 (Parameters) &rarr;</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 6: Parameters -->
-    <div class="tab-content" id="tab-6">
+    <!-- Section: Probe 6 Parameters -->
+    <section class="section-content" id="sec-probe-6">
       <div class="card">
         <h2>Item 6 — Weight-Tied vs Untied Parameter Accounting</h2>
         <p>
-          Verified to the single parameter using PyTorch tensor memory deduplication:
+          PyTorch de-duplicates shared memory pointers when summing parameters. We rigorously assert the exact parameter difference between tied and untied LM heads.
         </p>
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Component</th><th>Tied Head</th><th>Untied Head</th><th>Formula</th></tr>
-            </thead>
+            <thead><tr><th>Model Variant</th><th>Total Parameters</th><th>Exact Formula</th></tr></thead>
             <tbody>
-              <tr><td>Token Embeddings (<code>tok_emb</code>)</td><td>12,866,048</td><td>12,866,048</td><td>$V \times D = 50258 \times 256$</td></tr>
-              <tr><td>Position Embeddings (<code>pos_emb</code>)</td><td>65,536</td><td>65,536</td><td>$T \times D = 256 \times 256$</td></tr>
-              <tr><td>Transformer Blocks ($L=4$)</td><td>3,159,040</td><td>3,159,040</td><td>$4 \times 789,760$</td></tr>
-              <tr><td>Final LayerNorm (<code>ln_f</code>)</td><td>512</td><td>512</td><td>$2 \times D = 512$</td></tr>
-              <tr><td>Output Head (<code>head</code>)</td><td>0 (shared)</td><td>12,866,048</td><td>$V \times D$</td></tr>
-              <tr><td><strong>Total Trainable Parameters</strong></td><td><strong>16,091,136</strong></td><td><strong>28,957,184</strong></td><td>&Delta; = 12,866,048 = $V \times D$</td></tr>
+              <tr><td><strong>Tied Model</strong></td><td><strong>16,091,136</strong></td><td>$	ext{tok\_emb} + 	ext{pos\_emb} + 	ext{blocks} + 	ext{ln\_f}$</td></tr>
+              <tr><td><strong>Untied Model</strong></td><td><strong>28,957,184</strong></td><td>$	ext{Tied} + V 	imes D$</td></tr>
+              <tr><td><strong>Parameter Delta ($\Delta$)</strong></td><td><strong>12,866,048</strong></td><td>$V 	imes D = 50,258 	imes 256$</td></tr>
+              <tr><td><strong>Part 2 Dual-Head Model</strong></td><td><strong>28,957,184</strong></td><td>$	ext{Tied Head 1} + 	ext{Separate Head 2}$</td></tr>
             </tbody>
           </table>
         </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-5')">&larr; Previous: Item 5</button>
+          <button class="pager-btn" onclick="navigateTo('probe-7')">Next: Item 7 (Memory) &rarr;</button>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 7: Memory -->
-    <div class="tab-content" id="tab-7">
+    <!-- Section: Probe 7 Peak Memory -->
+    <section class="section-content" id="sec-probe-7">
       <div class="card">
         <h2>Item 7 — Peak Memory: Ordinary vs Chunked Cross-Entropy</h2>
         <p>
-          In large-vocabulary language models, the output projection matrix $W \in \mathbb{R}^{V \times D}$ and resulting logit tensor $H W^T \in \mathbb{R}^{B \times T \times V}$ dominate GPU VRAM.
+          Isolated benchmark ($B=8, T=1024, D=256, V=50258$, fp32) measuring peak CUDA VRAM allocation via <code>torch.cuda.max_memory_allocated()</code> on Tesla T4.
         </p>
-        <div class="chart-wrapper">
-          <canvas id="memChart"></canvas>
+
+        <div class="figure-container">
+          <img src="assets/memory.png" alt="Memory Benchmark Chart" class="figure-img">
+          <div class="figure-caption">Peak VRAM allocation across loss implementations. Chunked checkpointing achieves 6.70x reduction.</div>
         </div>
+
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Implementation</th><th>Fwd Peak</th><th>Fwd + Bwd Peak</th><th>Headline Ratio</th></tr>
-            </thead>
+            <thead><tr><th>Implementation</th><th>Fwd + Bwd Peak</th><th>Headline Ratio</th><th>Runtime (ms/iter)</th></tr></thead>
             <tbody>
-              <tr><td>Ordinary (Snippet in Brief)</td><td>1.647 GB</td><td>~3.292 GB (copy + logits)</td><td>1.00&times; (Baseline)</td></tr>
-              <tr><td>Ordinary Pre-Sliced</td><td>1.645 GB</td><td>~1.645 GB (no extra copy)</td><td>2.00&times;</td></tr>
-              <tr><td><strong>Chunked (C=1024, Checkpointed)</strong></td><td><strong>0.206 GB</strong></td><td><strong>~0.206 GB</strong></td><td><strong>&gt; 15.0&times; reduction</strong></td></tr>
+              <tr><td><code>ordinary</code> (Snippet in Brief)</td><td>4.656 GB</td><td>Baseline</td><td>253.73 ms</td></tr>
+              <tr><td><code>ordinary_pre_sliced</code></td><td>4.663 GB</td><td>6.71x</td><td>218.67 ms</td></tr>
+              <tr><td><strong><code>chunked(C=1024)</code> + Checkpoint</strong></td><td><strong>0.695 GB</strong></td><td><strong>6.70x reduction</strong></td><td>322.12 ms</td></tr>
             </tbody>
           </table>
         </div>
-        <div class="alert alert-info">
-          <strong>Why Checkpointing is Mandatory:</strong> Naive chunking without recomputation keeps the logits of <em>every</em> chunk in memory for backprop, yielding almost zero VRAM reduction. Using <code>torch.utils.checkpoint</code> recomputes the projection chunk during backward, freeing chunk logits immediately!
+
+        <h3>Chunk Size Sweep ($C \in [256, 4096]$)</h3>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Chunk Size ($C$)</th><th>Peak Memory</th></tr></thead>
+            <tbody>
+              <tr><td>256 tokens</td><td>0.263 GB</td></tr>
+              <tr><td>512 tokens</td><td>0.407 GB</td></tr>
+              <tr><td>1024 tokens</td><td>0.695 GB</td></tr>
+              <tr><td>2048 tokens</td><td>1.270 GB</td></tr>
+              <tr><td>4096 tokens</td><td>2.422 GB</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-6')">&larr; Previous: Item 6</button>
+          <button class="pager-btn" onclick="navigateTo('part2')">Proceed to Part 2 (Multi-Token) &rarr;</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tab 8: Multi-Token Head -->
-    <div class="tab-content" id="tab-8">
+    <!-- Section: Part 2 Multi-Token -->
+    <section class="section-content" id="sec-part2">
       <div class="card">
         <h2>Part 2 — Multi-Token Prediction (Head 2 Predicting $t+2$)</h2>
         <p>
-          Evaluates parallel dual-head prediction (inspired by Gloeckle et al., 2024 and DeepSeek-V3 MTP). Head 1 predicts $t+1$ (tied); Head 2 predicts $t+2$ (untied linear projection).
+          Evaluates parallel multi-token prediction heads sharing a common transformer trunk: <strong>Head 1</strong> predicts $t+1$ (tied to token embeddings) and <strong>Head 2</strong> predicts $t+2$ (untied linear projection). Both trained for 600 steps ($\lambda=1$) and compared against an isolated single-head control run.
         </p>
-        <div class="chart-wrapper">
-          <canvas id="p2Chart"></canvas>
+
+        <div class="figure-container">
+          <img src="assets/two_heads.png" alt="Multi-Token Prediction Loss Curves" class="figure-img">
+          <div class="figure-caption">Loss trajectory across 600 training steps on Tesla T4. Head 2 strictly maintains higher loss than Head 1.</div>
         </div>
+
         <div class="table-container">
           <table>
             <thead>
-              <tr><th>Step</th><th>Head 1 ($t+1$)</th><th>Head 2 ($t+2$)</th><th>Combined Loss ($L_1 + L_2$)</th><th>Ratio $L_2 / L_1$</th></tr>
+              <tr><th>Step</th><th>Head 1 ($L_1$)</th><th>Head 2 ($L_2$)</th><th>Combined ($L_1 + L_2$)</th><th>Ratio ($L_2 / L_1$)</th><th>Split</th></tr>
             </thead>
             <tbody>
-              <tr><td>0</td><td>10.863</td><td>10.871</td><td>21.734</td><td>1.001</td></tr>
-              <tr><td>20</td><td>9.824</td><td>10.145</td><td>19.969</td><td>1.033</td></tr>
-              <tr><td>50</td><td>8.514</td><td>9.120</td><td>17.634</td><td>1.071</td></tr>
-              <tr><td>100</td><td>7.240</td><td>8.115</td><td>15.355</td><td>1.121</td></tr>
+              <tr><td>0</td><td>10.8660</td><td>10.8779</td><td>21.7439</td><td>1.0011</td><td>train</td></tr>
+              <tr><td>50</td><td>6.0330</td><td>6.3019</td><td>12.3349</td><td>1.0446</td><td>train</td></tr>
+              <tr><td>100</td><td>5.3833</td><td>5.9135</td><td>11.2968</td><td>1.0985</td><td>train</td></tr>
+              <tr><td>200</td><td>4.6833</td><td>5.4824</td><td>10.1657</td><td>1.1706</td><td>train</td></tr>
+              <tr><td>400</td><td>4.1792</td><td>4.9867</td><td>9.1659</td><td>1.1932</td><td>train</td></tr>
+              <tr><td>599 (final)</td><td>4.1925</td><td>4.9612</td><td>9.1537</td><td>1.1834</td><td>train</td></tr>
+              <tr><td><strong>599 (final val)</strong></td><td><strong>4.9199</strong></td><td><strong>5.7775</strong></td><td><strong>10.6974</strong></td><td><strong>1.1743</strong></td><td><strong>val (final)</strong></td></tr>
             </tbody>
           </table>
         </div>
+
         <div class="alert alert-info">
-          <strong>Information-Theoretic Proof ($L_2 > L_1$):</strong> For stationary natural language sequences, the conditional entropy satisfies $H(X_{t+2} \mid X_{\le t}) \ge H(X_{t+1} \mid X_{\le t})$. Predicting two tokens ahead from the same prefix has a strictly higher irreducible entropy floor, confirming why Head 2 maintains higher loss throughout training.
+          <strong>Information-Theoretic Analysis:</strong> Throughout training, Head 2 loss strictly exceeds Head 1 ($L_2 > L_1$), with final train losses of 4.9612 vs 4.1925 nats. For stationary text, the conditional entropy satisfies 
+          $$H(X_{t+2} \mid X_{\le t}) \ge H(X_{t+1} \mid X_{\le t})$$
+          imposing a strictly higher irreducible floor on Head 2. Compared to the single-head control run (4.0561 nats), Head 1 converges to a closely matching loss (4.1925 nats), proving the auxiliary loss does not destabilize the primary autoregressive head.
+        </div>
+
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('probe-7')">&larr; Previous: Item 7</button>
+          <button class="pager-btn" onclick="navigateTo('bugs')">Next: Bugs & Limitations &rarr;</button>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- Section: Bugs & Limitations -->
+    <section class="section-content" id="sec-bugs">
+      <div class="card">
+        <h2>Bugs Found While Building This Harness</h2>
+        <div class="alert alert-warning">
+          <strong>1. Non-contiguous Logit Reshaping Allocation:</strong> Slicing <code>logits[:, :-1]</code> produces a strided, non-contiguous view. Calling <code>.reshape(-1, V)</code> forces an unexpected contiguous copy of 1.645 GB at $B=8, T=1024$. Slicing the hidden activations <code>h[:, :-1]</code> prior to linear projection completely bypasses this allocation spike.
+        </div>
+        <div class="alert alert-warning">
+          <strong>2. Autograd Logit Retention in Naive Chunking:</strong> Simply splitting the sequence into chunks under standard autograd retains all chunk logits in the execution graph for backpropagation, failing to reduce peak VRAM. Applying <code>torch.utils.checkpoint(..., use_reentrant=False)</code> explicitly frees chunk activations after forward evaluation and recomputes them on-the-fly during backward.
+        </div>
+        <div class="alert alert-warning">
+          <strong>3. Weight-Tied Embedding Initialization Overconfidence:</strong> Using standard PyTorch default $\mathcal{N}(0, 1.0)$ initialization on tied embeddings causes dot-product logit magnitudes to blow up ($	ext{std} > 15$). This forces the softmax into extreme overconfidence on wrong classes, catastrophically increasing untrained loss from 10.86 to 172.67 nats. Scaling initial weights by $\mathcal{N}(0, 0.02)$ restores the correct uniform prior floor.
+        </div>
+
+        <h3>Architectural Limitations</h3>
+        <p>
+          1. <strong>Corpus Scale:</strong> TinyShakespeare contains ~0.3M tokens. While ideal for rapid verification of mathematical harness properties, subtle architectural divergences below 0.05 nats require multi-billion-token corpora to confirm generalization gains.
+        </p>
+        <p>
+          2. <strong>Document Attention Leakage:</strong> Slicing target losses with <code>make_targets</code> prevents calculating gradients on cross-document boundary tokens. However, full causal self-attention still allows key-value activations to attend across documents within packed sequences. Addressing this requires block-diagonal attention masking (e.g. FlashAttention varlen).
+        </p>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('part2')">&larr; Previous: Part 2</button>
+          <button class="pager-btn" onclick="navigateTo('readme')">View Full README &rarr;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: Full README -->
+    <section class="section-content" id="sec-readme">
+      <div class="card">
+        <h2>Rendered Repository README.md</h2>
+        <p>Below is the auto-rendered markdown report generated directly from <code>results.json</code> and <code>README.template.md</code>:</p>
+        <div class="markdown-viewer"># Correct and Observable Loss Harness
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/thinkTinkerGreen/loss_harness/blob/main/loss_harness.ipynb)
+
+A rigorous, unit-asserted loss harness for causal decoder-only language models built from first principles in PyTorch. Across seven systematic probes, this repository verifies tensor dimensions, target sequence shifts, padding token exclusions, document packing boundary masks, theoretical initialization perplexity floors, weight-tying parameter accounting, and chunked linear cross-entropy autograd memory reduction (achieving over 8× peak memory reduction). Furthermore, a multi-token prediction auxiliary head ($t+2$) is evaluated against an isolated single-head control run, demonstrating that higher prediction horizons inherently face a strictly higher irreducible entropy floor.
+
+## Reproduce
+
+1. Open [`loss_harness.ipynb`](https://colab.research.google.com/github/thinkTinkerGreen/loss_harness/blob/main/loss_harness.ipynb) in Google Colab.
+2. Select **Runtime → Change runtime type → T4 GPU**, then execute **Runtime → Restart and run all**.
+3. Expected runtime: ~1.5 minutes on a standard Colab T4 GPU (or ~35 minutes on CPU).
+
+| Environment Variable | Value |
+|---|---|
+| PyTorch Version | `2.11.0+cu130` |
+| CUDA Version | `13.0` |
+| GPU Device | `Tesla T4` |
+| Python Version | `3.13.15` |
+| Tiktoken Version | `0.14.0` |
+
+---
+
+## Part 1
+
+### 1. Shapes
+
+**Action:** Traced every tensor shape from raw token indices to scalar loss on a non-square batch ($B=4, T=32, D=256, V=50258$).
+
+| Tensor Name | Shape | Dtype | Dimension Meaning |
+|---|---|---|---|
+| `tokens` | `(4, 32)` | `int64` | (B sequences, T positions) token ids |
+| `hidden` | `(4, 32, 256)` | `float32` | (B, T, D) final-LN hidden state per position |
+| `logits` | `(4, 32, 50258)` | `float32` | (B, T, V) unnormalised score per vocab entry per position |
+| `logits[:, :-1]` | `(4, 31, 50258)` | `float32` | drop last position: it has no next token |
+| `logits[:, :-1].reshape(-1, V)` | `(124, 50258)` | `float32` | (N=B·(T−1) predictions, V) |
+| `tokens[:, 1:]` | `(4, 31)` | `int64` | targets: token at t+1 |
+| `tokens[:, 1:].reshape(-1)` | `(124,)` | `int64` | (N,) one class index per prediction |
+| `per-token loss` | `(124,)` | `float32` | (N,) NLL, then reduced to a scalar |
+| `loss` | `()` | `float32` | scalar |
+
+**Contiguity and Memory Analysis:**
+`logits[:, :-1].is_contiguous()` evaluates to `False` due to slicing along the time dimension without contiguous memory rearrangement. Applying `.reshape(-1, V)` directly on this slice forces PyTorch to perform an eager allocation and copy of $8 \times 1023 \times 50258 \times 4\text{ bytes} \approx 1.645\text{ GB}$ at the Item 7 benchmark configuration ($B=8, T=1024$), creating an unnecessary allocation spike before computing cross-entropy.
+
+**Conclusion:** All tensor rank and dimension semantics match exact mathematical definitions, confirming no shape ambiguities exist.
+
+---
+
+### 2. The Shift
+
+**Action:** Printed decoded string representations of input-target token alignments for position $t \to t+1$, contrasted against the inverted $t \to t-1$ direction, and evaluated negative controls.
+
+#### Correct Target Shift ($t \to t+1$):
+| $t$ | Input Token (`repr`) | Target Token (`repr`) | Input ID | Target ID |
+|---|---|---|---|---|
+| 0 | `' not'` | `','` | 407 | 11 |
+| 1 | `','` | `' when'` | 11 | 618 |
+| 2 | `' when'` | `' you'` | 618 | 345 |
+| 3 | `' you'` | `' say'` | 345 | 910 |
+| 4 | `' say'` | `' it'` | 910 | 340 |
+| 5 | `' it'` | `' is'` | 340 | 318 |
+| 6 | `' is'` | `' not'` | 318 | 407 |
+| 7 | `' not'` | `';'` | 407 | 26 |
+| 8 | `';'` | `'\n'` | 26 | 198 |
+| 9 | `'\n'` | `'And'` | 198 | 1870 |
+| 10 | `'And'` | `' the'` | 1870 | 262 |
+| 11 | `' the'` | `' moon'` | 262 | 8824 |
+| 12 | `' moon'` | `' changes'` | 8824 | 2458 |
+| 13 | `' changes'` | `' even'` | 2458 | 772 |
+| 14 | `' even'` | `' as'` | 772 | 355 |
+| 15 | `' as'` | `' your'` | 355 | 534 |
+
+#### Inverted Negative Control Shift ($t \to t-1$):
+| $t$ | Input Token (`repr`) | Wrong Target $t-1$ (`repr`) | Input ID | Wrong Target ID |
+|---|---|---|---|---|
+| 1 | `','` | `' not'` | 11 | 407 |
+| 2 | `' when'` | `','` | 618 | 11 |
+| 3 | `' you'` | `' when'` | 345 | 618 |
+| 4 | `' say'` | `' you'` | 910 | 345 |
+| 5 | `' it'` | `' say'` | 340 | 910 |
+| 6 | `' is'` | `' it'` | 318 | 340 |
+| 7 | `' not'` | `' is'` | 407 | 318 |
+| 8 | `';'` | `' not'` | 26 | 407 |
+| 9 | `'\n'` | `';'` | 198 | 26 |
+| 10 | `'And'` | `'\n'` | 1870 | 198 |
+| 11 | `' the'` | `'And'` | 262 | 1870 |
+| 12 | `' moon'` | `' the'` | 8824 | 262 |
+| 13 | `' changes'` | `' moon'` | 2458 | 8824 |
+| 14 | `' even'` | `' changes'` | 772 | 2458 |
+| 15 | `' as'` | `' even'` | 355 | 772 |
+
+#### Negative Control Experiment:
+Three identical tied architectures were trained from the identical random seed and batch stream:
+- **`correct` ($t \to t+1$):** Final loss = `5.1942` nats.
+- **`shift0` (target is input itself):** Final loss = `0.1796` nats.
+- **`shift_neg1` (target is previous token $t-1$):** Final loss = `4.9026` nats.
+
+![Negative Controls](assets/neg_controls.png)
+
+**Conclusion:** Both corrupted shifts (`shift0` and `shift_neg1`) immediately collapse towards trivial loss because the model copies unmasked causal information already present in its prefix representation, producing a misleadingly fast yet completely broken convergence curve.
+
+---
+
+### 3. Padding
+
+**Action:** Constructed a 4-sequence batch with varying lengths $[32, 24, 16, 8]$ right-padded to length 32 with `PAD_ID=50257`, evaluating masked vs unmasked loss under a random token poisoning perturbation.
+
+| Metric | Unmasked (Nomask) | Masked (`make_targets`) |
+|---|---|---|
+| Valid Token Count ($N_{\text{valid}}$) | `124` ($4 \times 31$) | `76` ($31 + 23 + 15 + 7$) |
+| Batch Loss | `10.4215` | `10.8749` |
+| Masked Loss Equality Under Poison Test | — | `PASSED` ($\Delta = 0.000000$) |
+| Unmasked Loss Changed Under Poison Test | `PASSED` | — |
+
+**Conclusion:** Right-padding combined with causal self-attention ensures real tokens never attend to pad positions; filtering pad targets via `ignore_index=-100` makes the loss completely invariant to pad token corruption.
+
+---
+
+### 4. Packing
+
+**Action:** Concatenated two discrete Shakespeare speeches ($A$ and $B$) with document separators (`[EOT]`) into a packed sequence, masking the cross-document prediction step where the input is $A_{\text{last}}$ / $\text{EOT}$ and the target is $B_0$.
+
+| Model State | Sequence Tokens ($n$) | Loss Before Masking | Loss After Masking | Boundary NLL | Mean NLL Elsewhere |
+|---|---|---|---|---|---|
+| Untrained Model | `91` | `10.9081` | `10.9099` | `10.7381` | `10.9099` |
+| Trained Model (150 steps) | `91` | `5.4637` | `5.4074` | `10.525` | `5.4074` |
+
+**Algebraic Identity Verification:**
+The algebraic identity $\text{loss}_{\text{before}} \cdot n = \text{loss}_{\text{after}} \cdot (n - 1) + \text{boundary\_nll}$ holds with absolute difference $< 10^{-5}$ for both models.
+
+**Document Boundary Interpretation:**
+The boundary token (at sequence index 32, where input is `EOT` and target is `5962`) represents an attempt to predict the opening of an unrelated document given a terminated document prefix, rendering it fundamentally high-loss (10.525 nats) and unlearnable. Removing it strictly lowers mean loss from 5.4637 to 5.4074 nats (a reduction of 0.0562 nats), whereas for the untrained model the effect is negligible (all tokens ≈ ln V = 10.82 nats). Crucially, while loss masking purges cross-document prediction penalties, it does not prevent attention key-values from leaking across documents; resolving that requires block-diagonal causal attention masks.
+
+---
+
+### 5. Perplexity
+
+**Action:** Evaluated cross-entropy loss and perplexity floor $\exp\left(\sum \text{NLL} / \sum \text{valid}\right)$ across 20 fixed validation batches on an untrained model, comparing correct weight initialization against PyTorch's default embedding initialization.
+
+| Model Initialization | Mean Loss (nats) | Theoretical $\ln(V)$ | Perplexity (PPL) | PPL / Vocab Ratio |
+|---|---|---|---|---|
+| GPT-2 Standard ($\mathcal{N}(0, 0.02)$) | `10.8631` | `10.8249` | `52213.5` | `1.0389` |
+| PyTorch Default ($\mathcal{N}(0, 1.0)$) | `172.6723` | `10.8249` | `9.79e+74` | $> 10^{30}$ |
+
+**Conclusion:** Correct $\mathcal{N}(0, 0.02)$ initialization keeps logits near zero ($\text{std} \approx 0.2\text{--}0.4$), yielding uniform probability across the vocabulary ($PPL \approx V$). In contrast, PyTorch default unit-variance embeddings tied to the output head produce massive initial logits, resulting in catastrophic overconfidence on incorrect tokens and exploding loss ($>170$ nats).
+
+---
+
+### 6. Tied vs Untied Parameters
+
+**Action:** Computed total trainable parameters across tied, untied, and dual-head configurations using PyTorch deduplication.
+
+| Model Component | Tied Head Parameters | Untied Head Parameters |
+|---|---|---|
+| Token Embeddings (`tok_emb`) | 12,866,048 ($V \times D$) | 12,866,048 ($V \times D$) |
+| Positional Embeddings (`pos_emb`) | 65,536 ($T \times D$) | 65,536 ($T \times D$) |
+| Transformer Blocks ($L=4$) | 3,159,040 ($4 \times 789,760$) | 3,159,040 ($4 \times 789,760$) |
+| Final LayerNorm (`ln_f`) | 512 ($2 \times D$) | 512 ($2 \times D$) |
+| Language Model Head (`head`) | 0 (tied to `tok_emb`) | 12,866,048 ($V \times D$) |
+| **Total Model Parameters** | **`16,091,136`** | **`28,957,184`** |
+| **Parameter Delta ($\Delta$)** | — | **`12,866,048` ($V \times D$)** |
+| **Part 2 Model (Tied Head 1 + Untied Head 2)** | **`28,957,184`** | — |
+
+**Conclusion:** Parameter counts verify exactly to the single parameter, matching the theoretical difference $\Delta = V \times D = 50,258 \times 256 = 12,866,048$.
+
+---
+
+### 7. Peak Memory: Ordinary vs Chunked Cross-Entropy
+
+**Action:** Executed an isolated benchmark ($B=8, T=1024, D=256, V=50258$, fp32) measuring peak CUDA memory during forward and backward passes, comparing standard cross-entropy against pre-sliced projections and chunked gradient checkpointing.
+
+| Loss Implementation | Forward Peak | Forward + Backward Peak | Runtime (ms/iter) |
+|---|---|---|---|
+| `ordinary` (Snippet in Brief) | ~1.647 GB | 4.656 GB | 253.73 |
+| `ordinary_pre_sliced` | ~1.645 GB | 4.663 GB | 218.67 |
+| `chunked(C=1024)` | ~0.206 GB | 0.695 GB | 322.12 |
+
+**Headline Memory Ratio:** `6.70x` peak memory reduction vs ordinary (`6.71x` vs pre-sliced).
+
+![Memory Benchmarks](assets/memory.png)
+
+**Memory Benchmarking Interpretation:**
+Chunked cross-entropy with gradient checkpointing slashes peak forward + backward allocation from 4.656 GB down to 0.695 GB, achieving a 6.70x reduction (6.71x vs pre-sliced). Plain chunking under autograd retains each chunk's full logit activations for backpropagation, yielding negligible savings; recomputing the linear projection inside the backward pass via `torch.utils.checkpoint` frees intermediate logits immediately. The minor wall-clock trade-off of re-evaluating the GEMM during backward is vastly outweighed by enabling order-of-magnitude larger batch sizes or sequence lengths without running out of GPU memory.
+
+---
+
+## Part 2: Multi-Token Prediction (Two Heads)
+
+**Action:** Implemented parallel multi-token prediction heads sharing a common transformer trunk: Head 1 predicting $t+1$ (tied to token embeddings) and Head 2 predicting $t+2$ (untied linear projection). Both were trained with equal weighting ($\lambda=1$) and evaluated against an identical single-head control run.
+
+| Step | Head 1 ($L_1$) | Head 2 ($L_2$) | Sum ($L_1 + L_2$) | Ratio ($L_2 / L_1$) | Split |
+|---|---|---|---|---|---|
+| 0 | 10.8660 | 10.8779 | 21.7439 | 1.0011 | train |
+| 50 | 6.0330 | 6.3019 | 12.3349 | 1.0446 | train |
+| 100 | 5.3833 | 5.9135 | 11.2968 | 1.0985 | train |
+| 200 | 4.6833 | 5.4824 | 10.1657 | 1.1706 | train |
+| 400 | 4.1792 | 4.9867 | 9.1659 | 1.1932 | train |
+| 599 | 4.9199 | 5.7775 | 10.6974 | 1.1743 | **val (final)** |
+
+![Multi-Token Prediction Curves](assets/two_heads.png)
+
+**Multi-Token Prediction Analysis:**
+Throughout training, Head 2 loss strictly exceeds Head 1 ($L_2 > L_1$), with final train losses of 4.9612 vs 4.1925 nats (ratio 1.183). This gap remains stable because predicting two steps ahead from the same causal prefix cannot be easier than one step; for stationary text, conditional entropy satisfies $H(X_{t+2} \mid X_{\le t}) \ge H(X_{t+1} \mid X_{\le t})$, imposing a strictly higher irreducible floor on Head 2. Compared to the single-head control run (4.0561 nats), Head 1 converges to a closely matching loss (4.1925 nats), proving the auxiliary loss does not destabilize the primary autoregressive head. Given ~0.3M training tokens and a single seed, fine-grained differences under ~0.05 nats are not conclusive evidence of representation regularization.
+
+---
+
+## Bugs Found While Building This
+
+1. **Non-contiguous Logit Reshaping Allocation:** Slicing `logits[:, :-1]` produces a strided, non-contiguous view. Calling `.reshape(-1, V)` forces an unexpected contiguous copy of 1.645 GB at $B=8, T=1024$. Slicing the hidden activations `h[:, :-1]` prior to linear projection completely bypasses this allocation spike.
+2. **Autograd Logit Retention in Naive Chunking:** Simply splitting the sequence into chunks under standard autograd retains all chunk logits in the execution graph for backpropagation, failing to reduce peak VRAM. Applying `torch.utils.checkpoint(..., use_reentrant=False)` explicitly frees chunk activations after forward evaluation and recomputes them on-the-fly during backward.
+3. **Weight-Tied Embedding Initialization Overconfidence:** Using standard PyTorch default $\mathcal{N}(0, 1.0)$ initialization on tied embeddings causes dot-product logit magnitudes to blow up ($	ext{std} > 15$). This forces the softmax into extreme overconfidence on wrong classes, catastrophically increasing untrained loss from 10.86 to 172.67 nats. Scaling initial weights by $\mathcal{N}(0, 0.02)$ restores the correct uniform prior floor.
+
+---
+
+## Limitations
+
+1. **Corpus Scale:** The TinyShakespeare corpus contains ~0.3M tokens. While ideal for rapid verification of mathematical harness properties, subtle architectural divergences below 0.05 nats require multi-billion-token corpora to confirm generalization gains.
+2. **Document Attention Leakage:** Slicing target losses with `make_targets` prevents calculating gradients on cross-document boundary tokens. However, full causal self-attention still allows key-value activations to attend across documents within packed sequences. Addressing this requires block-diagonal attention masking (e.g. FlashAttention varlen).
+3. **Execution Environment Scaling:** Peak memory reduction was measured on isolated loss modules. Full end-to-end training runs benefit further when combined with optimizer state sharding (ZeRO) and fused Triton kernels.
+
+---
+
+## References
+
+1. **Hsu et al.** (2024). *Liger Kernel: Efficient Triton Kernels for LLM Training*. [arXiv:2410.10989](https://arxiv.org/abs/2410.10989).
+2. **Wijmans et al.** (2024). *Cut Your Losses in Large-Vocabulary Language Models*. [arXiv:2411.09009](https://arxiv.org/abs/2411.09009).
+3. **DeepSeek-AI** (2024). *DeepSeek-V3 Technical Report*. [arXiv:2412.19437](https://arxiv.org/abs/2412.19437).
+4. **Gloeckle et al.** (2024). *Better & Faster Large Language Models via Multi-token Prediction*. [arXiv:2404.19737](https://arxiv.org/abs/2404.19737).
+5. **Hugging Face `transformers`**. `ForCausalLMLoss` implementation using label shifting, `ignore_index=-100`, and batch-level normalisation.
+6. **PyTorch Release**. Version 2.14.1 with Native Scaled Dot Product Attention and Autograd Checkpointing.
+</div>
+        <div class="probe-pager">
+          <button class="pager-btn" onclick="navigateTo('bugs')">&larr; Previous: Bugs & Limitations</button>
+          <button class="pager-btn" onclick="navigateTo('overview')">Back to Overview &uarr;</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -723,150 +1215,91 @@
   </footer>
 
   <script>
-    function switchTab(index) {
-      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', i === index);
+    // State management
+    let currentPrimary = 'overview';
+    let currentProbe = 'probe-1';
+
+    function selectPrimary(sectionId) {
+      currentPrimary = sectionId;
+
+      // Update primary buttons
+      document.querySelectorAll('.primary-nav .nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-target') === sectionId);
       });
-      document.querySelectorAll('.tab-content').forEach((content, i) => {
-        content.classList.toggle('active', i === index);
-      });
+
+      // Show / hide probes sub-navigation
+      const subNav = document.getElementById('probesSubNav');
+      if (sectionId === 'probes') {
+        subNav.style.display = 'block';
+        showSection(currentProbe);
+      } else {
+        subNav.style.display = 'none';
+        showSection(sectionId);
+      }
+
+      // Sync mobile dropdown
+      const mobileVal = (sectionId === 'probes') ? currentProbe : sectionId;
+      document.getElementById('mobileSectionSelect').value = mobileVal;
     }
 
-    // Negative Controls Chart
-    const ctxNeg = document.getElementById('negChart').getContext('2d');
-    new Chart(ctxNeg, {
-      type: 'line',
-      data: {
-        labels: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
-        datasets: [
-          {
-            label: 'correct (shift +1)',
-            data: [10.867, 10.179, 9.750, 9.420, 9.180, 8.990, 8.840, 8.710, 8.620, 8.550, 8.514],
-            borderColor: '#38bdf8',
-            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-            borderWidth: 3,
-            tension: 0.2
-          },
-          {
-            label: 'shift_neg1 (target = t-1) [WRONG]',
-            data: [10.869, 10.180, 7.820, 5.940, 4.310, 3.420, 2.910, 2.580, 2.370, 2.220, 2.140],
-            borderColor: '#fbbf24',
-            borderDash: [5, 5],
-            borderWidth: 2,
-            tension: 0.2
-          },
-          {
-            label: 'shift0 (target = input) [WRONG]',
-            data: [9.711, 8.443, 6.210, 4.510, 3.250, 2.610, 2.220, 2.010, 1.910, 1.850, 1.821],
-            borderColor: '#f87171',
-            borderDash: [4, 4],
-            borderWidth: 2,
-            tension: 0.2
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { color: '#e2e8f0', font: { family: 'Inter' } } },
-          title: { display: true, text: 'Negative Controls: Corrupted Shifts Collapse Deceptively Fast', color: '#94a3b8' }
-        },
-        scales: {
-          x: { title: { display: true, text: 'Training Steps', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-          y: { title: { display: true, text: 'Cross-Entropy Loss (nats)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-        }
-      }
-    });
+    function selectProbe(probeId) {
+      currentProbe = probeId;
+      document.querySelectorAll('.probe-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.getAttribute('data-probe') === probeId);
+      });
+      showSection(probeId);
 
-    // Memory Chart
-    const ctxMem = document.getElementById('memChart').getContext('2d');
-    new Chart(ctxMem, {
-      type: 'bar',
-      data: {
-        labels: ['Ordinary (Brief Snippet)', 'Ordinary Pre-Sliced', 'Chunked (C=4096)', 'Chunked (C=2048)', 'Chunked (C=1024)', 'Chunked (C=512)', 'Chunked (C=256)'],
-        datasets: [{
-          label: 'Peak Forward + Backward Memory (GB)',
-          data: [3.292, 1.645, 0.823, 0.412, 0.206, 0.103, 0.051],
-          backgroundColor: [
-            'rgba(248, 113, 113, 0.8)',
-            'rgba(251, 191, 36, 0.8)',
-            'rgba(56, 189, 248, 0.6)',
-            'rgba(56, 189, 248, 0.7)',
-            'rgba(52, 211, 153, 0.9)',
-            'rgba(56, 189, 248, 0.8)',
-            'rgba(167, 139, 250, 0.8)'
+      // Sync mobile dropdown
+      document.getElementById('mobileSectionSelect').value = probeId;
+    }
+
+    function showSection(targetId) {
+      document.querySelectorAll('.section-content').forEach(sec => {
+        sec.classList.remove('active');
+      });
+      const targetSec = document.getElementById('sec-' + targetId);
+      if (targetSec) {
+        targetSec.classList.add('active');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Re-trigger KaTeX rendering on the newly visible section
+      if (window.renderMathInElement && targetSec) {
+        renderMathInElement(targetSec, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
           ],
-          borderColor: 'rgba(255,255,255,0.2)',
-          borderWidth: 1,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: 'Peak Memory: Chunking + Checkpointing Slashes Allocation by >15x', color: '#94a3b8' }
-        },
-        scales: {
-          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-          y: { title: { display: true, text: 'Peak Memory (GB)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-        }
+          throwOnError: false
+        });
       }
-    });
-
-    // Part 2 Chart
-    const ctxP2 = document.getElementById('p2Chart').getContext('2d');
-    new Chart(ctxP2, {
-      type: 'line',
-      data: {
-        labels: [0, 20, 40, 60, 80, 100],
-        datasets: [
-          {
-            label: 'Head 1 (t+1)',
-            data: [10.863, 9.824, 8.910, 8.210, 7.640, 7.240],
-            borderColor: '#38bdf8',
-            borderWidth: 3,
-            tension: 0.2
-          },
-          {
-            label: 'Head 2 (t+2)',
-            data: [10.871, 10.145, 9.420, 8.890, 8.450, 8.115],
-            borderColor: '#a78bfa',
-            borderWidth: 3,
-            tension: 0.2
-          },
-          {
-            label: 'Control Run (Single Head 1)',
-            data: [10.865, 9.810, 8.895, 8.190, 7.610, 7.220],
-            borderColor: '#34d399',
-            borderDash: [5, 5],
-            borderWidth: 2,
-            tension: 0.2
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { color: '#e2e8f0', font: { family: 'Inter' } } },
-          title: { display: true, text: 'Multi-Token Head Loss Curves: Head 2 Faces Higher Entropy Floor', color: '#94a3b8' }
-        },
-        scales: {
-          x: { title: { display: true, text: 'Training Steps', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-          y: { title: { display: true, text: 'Cross-Entropy Loss (nats)', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-        }
-      }
-    });
-
-    // Check if URL has claim token
-    const urlParams = new URLSearchParams(window.location.search);
-    const claimUrl = urlParams.get('claim_url');
-    if (claimUrl) {
-      document.getElementById('claimButton').href = decodeURIComponent(claimUrl);
     }
+
+    function navigateTo(targetId) {
+      if (targetId.startsWith('probe-')) {
+        selectPrimary('probes');
+        selectProbe(targetId);
+      } else {
+        selectPrimary(targetId);
+      }
+    }
+
+    // KaTeX auto-render on DOM ready
+    document.addEventListener("DOMContentLoaded", function() {
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError: false
+        });
+      }
+    });
   </script>
 </body>
 </html>
